@@ -19,7 +19,7 @@ namespace RSAEncryptionTester
         {
             InitializeComponent();
             _pass = pass;
-            allowedCharsTxt.Text = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890$&*_";
+            allowedCharsTxt.Text = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890$&*_()";
         }
 
         private void trackBar1_Scroll(object sender, EventArgs e)

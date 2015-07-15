@@ -8,20 +8,48 @@ using System.Windows.Forms;
 using System.Security.Cryptography;
 using System.IO;
 using RSAEncryptionLib;
+using System.Web;
+using System.Web.Script.Serialization;
+using System.Linq;
 
 namespace RSAEncryptionTester
 {
     public partial class MainForm : Form
     {
         RSAEncryption myRsa = new RSAEncryption();
-        bool isLoadPrivate = false;
-        bool isKeyLoaded = false;
+        bool isPublicKeyLoaded = false;
+        bool isPrivateKeyLoaded = false;
         SetRandomPass pass;
+        List<Entry> Entries;
+        JavaScriptSerializer json_serializer = new JavaScriptSerializer();
+        Entry newlyCreatedEntry = new Entry();
+        Entry viewedEntry = new Entry();
+        string passwordsFile = "passwords.txt";
 
         public MainForm()
         {
             InitializeComponent();
             pass = new SetRandomPass(SetPass);
+            InitializePasswords();
+            InitializeComboBoxes();
+        }
+
+        public void InitializeComboBoxes()
+        {
+            NullifyDropDown(comboBox1);
+            NullifyDropDown(comboBox2);
+            if (Entries.Any())
+            {
+                comboBox2.Items.AddRange(Entries.Select(a => a.Name).ToArray());
+                comboBox1.Items.AddRange(Entries.Select(a => a.Category).Distinct().ToArray());
+            }
+        }
+
+        private void InitializePasswords()
+        {
+            var textentries = File.ReadAllText("passwords.txt");
+            Entries = new List<Entry>();
+            Entries = json_serializer.Deserialize<List<Entry>>(textentries) ?? Entries;
         }
 
         private string GetHexString(byte[] byteArray)
@@ -50,68 +78,50 @@ namespace RSAEncryptionTester
 
         private void loadPublicKeyBtn_Click(object sender, EventArgs e)
         {
-            isLoadPrivate = false;
-            LoadKey();
+            openKeyFileDialog.InitialDirectory = Application.StartupPath;
+            if (openKeyFileDialog.ShowDialog() != DialogResult.OK)
+                return;
+            try
+            {
+                myRsa.LoadPublicFromXml(openKeyFileDialog.FileName);
+                isPublicKeyLoaded = true;
+                label12.Text = "Public key:" + openKeyFileDialog.FileName.Split(new char[] { '\\' }).Last() + " is loaded.";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("An Error occurred while trying to load a Key,\nMessage: " + ex.Message);
+            }
+
         }
 
         private void loadPrivateKeyBtn_Click(object sender, EventArgs e)
         {
-            isLoadPrivate=true;
-            LoadKey();
+            openKeyFileDialog.InitialDirectory = Application.StartupPath;
+            if (openKeyFileDialog.ShowDialog() != DialogResult.OK)
+                return;
+            try
+            {
+                myRsa.LoadPrivateFromXml(openKeyFileDialog.FileName);
+                isPrivateKeyLoaded = true;
+                label13.Text = "Private key:" + openKeyFileDialog.FileName.Split(new char[] { '\\' }).Last() + " is loaded.";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("An Error occurred while trying to load a Key,\nMessage: " + ex.Message);
+            }
         }
 
-        private void encryptBtn_Click(object sender, EventArgs e)
+        private void decrypt()
         {
-            if (isKeyLoaded)
+            if (isPrivateKeyLoaded)
             {
                 try
                 {
-                    byte[] message = Encoding.Default.GetBytes(txtMessage.Text);
-                    byte[] encMessage = null;
-                    if (isLoadPrivate)
-                    {
-                        encMessage = myRsa.PrivateEncryption(message);
-                    }
-                    else
-                    {
-                        encMessage = myRsa.PublicEncryption(message);
-                    }
-
-                    txtEncMsg.Text = Convert.ToBase64String(encMessage);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show("An Error occurred while trying to encrypt the data,\nMessage: " + ex.Message);
-                }
-            }
-            else 
-            {
-                MessageBox.Show("Please load a key");
-            }
-            
-        }
-
-        private void decryptBtn_Click(object sender, EventArgs e)
-        {
-            if (isKeyLoaded)
-            {
-                try
-                {
-                    byte[] decMessage = Convert.FromBase64String(txtEncMsg.Text);
+                    byte[] decMessage = Convert.FromBase64String(viewedEntry.EncryptedPassword);
                     byte[] message = null;
-
-                    if (isLoadPrivate)
-                    {
-                        message = myRsa.PrivateDecryption(decMessage);
-                    }
-                    else
-                    {
-                        message = myRsa.PublicDecryption(decMessage);
-                    }
-
-
+                    message = myRsa.PrivateDecryption(decMessage);
                     string sMsg = Encoding.Default.GetString(message);
-                    txtMessage.Text = sMsg;
+                    textBox7.Text = sMsg;
                 }
                 catch (Exception ex)
                 {
@@ -122,67 +132,99 @@ namespace RSAEncryptionTester
             {
                 MessageBox.Show("Please load a key");
             }
-
-        }
-
-        private void LoadKey()
-        {
-            openKeyFileDialog.InitialDirectory = Application.StartupPath;
-            if (openKeyFileDialog.ShowDialog() != DialogResult.OK)
-                return;
-
-            try
-            {
-                if (isLoadPrivate)
-                    myRsa.LoadPrivateFromXml(openKeyFileDialog.FileName);
-                else
-                    myRsa.LoadPublicFromXml(openKeyFileDialog.FileName);
-
-                if (!chkShowData.Checked)  
-                    return;
-
-                // If he does, Loading the key to .NET RSA class, to show is components in the form:
-                RSACryptoServiceProvider localRsa = new RSACryptoServiceProvider();
-                localRsa.FromXmlString(File.ReadAllText(openKeyFileDialog.FileName));
-                RSAParameters rsaParams = localRsa.ExportParameters(isLoadPrivate);
-                ClearInputFields();
-                txtExponent.Text = GetHexString(rsaParams.Exponent);
-                txtModulus.Text = GetHexString(rsaParams.Modulus);
-                if (isLoadPrivate)
-                    txtD.Text = GetHexString(rsaParams.D);  // This parameter is in private key only
-                isKeyLoaded = true;
-                // Clearing the RSA instance
-                localRsa.Clear();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("An Error occurred while trying to load a Key,\nMessage: " + ex.Message);
-            }
-        }
-
-        private void ClearInputFields()
-        {
-            txtExponent.Text = "";
-            txtModulus.Text = "";
-            txtD.Text="";
-        }
-
-        private void enableFieldsBtn_Click(object sender, EventArgs e)
-        {
-            txtExponent.Enabled = true;
-            txtModulus.Enabled = true;
-            txtD.Enabled = true;
         }
 
         private void generateStringBtn_Click(object sender, EventArgs e)
         {
-            var randomKeyGenerator=new RandomKeyGenerator(pass);
+            var randomKeyGenerator = new RandomKeyGenerator(pass);
             randomKeyGenerator.Show();
         }
 
         public void SetPass(string pass)
         {
             txtMessage.Text = pass;
+        }
+
+        private void saveBtn_Click(object sender, EventArgs e)
+        {
+            if (isPublicKeyLoaded)
+            {
+                try
+                {
+                    byte[] message = Encoding.Default.GetBytes(txtMessage.Text);
+                    byte[] encMessage = null;
+                    encMessage = myRsa.PublicEncryption(message);
+                    newlyCreatedEntry.EncryptedPassword = Convert.ToBase64String(encMessage);
+                    newlyCreatedEntry.Name = textBox1.Text;
+                    newlyCreatedEntry.Category = textBox2.Text;
+                    newlyCreatedEntry.OtherInfo = textBox3.Text;
+                    if (!Entries.Contains(newlyCreatedEntry))
+                    {
+                        Entries.Add(newlyCreatedEntry);
+                        newlyCreatedEntry = new Entry();
+                    }
+                    txtMessage.Text = string.Empty;
+                    textBox1.Text = string.Empty;
+                    textBox2.Text = string.Empty;
+                    textBox3.Text = string.Empty;
+
+                    UpdateOrAddEntry();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("An Error occurred while trying to encrypt the data,\nMessage: " + ex.Message);
+                }
+            }
+            else
+            {
+                MessageBox.Show("Please load a key");
+            }
+        }
+
+        private void UpdateOrAddEntry() 
+        {
+            File.WriteAllText(passwordsFile, String.Empty);
+            File.WriteAllText(passwordsFile, json_serializer.Serialize(Entries));
+            InitializePasswords();
+            InitializeComboBoxes();
+        }
+
+        private void comboBox2_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            ComboBox comboBox = (ComboBox)sender;
+            var selectedName = (string)comboBox.SelectedItem;
+
+            viewedEntry = Entries.Where(p => p.Name.Equals(selectedName)).SingleOrDefault();
+            textBox5.Text = viewedEntry.Category;
+            textBox6.Text = viewedEntry.Name;
+            textBox4.Text = viewedEntry.OtherInfo;
+            decrypt();
+            NullifyDropDown(comboBox1);
+            comboBox1.Items.AddRange(Entries.Select(a => a.Category).Distinct().ToArray());
+        }
+
+        private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            ComboBox comboBox = (ComboBox)sender;
+            var selectedCat = (string)comboBox.SelectedItem;
+
+            NullifyDropDown(comboBox2);
+            var filteredNames = Entries.Where(t => t.Category.Equals(selectedCat)).Select(a => a.Name).ToArray();
+            comboBox2.Items.AddRange(filteredNames);
+        }
+
+        private void NullifyDropDown(ComboBox cb)
+        {
+            cb.Items.Clear();
+        }
+
+        private void updateBtn_Click(object sender, EventArgs e)
+        {
+            var oldEntryIndex = Entries.IndexOf(viewedEntry);
+            Entries[oldEntryIndex].Name = textBox6.Text;
+            Entries[oldEntryIndex].OtherInfo = textBox4.Text;
+            Entries[oldEntryIndex].Category = textBox5.Text;
+            UpdateOrAddEntry();
         }
     }
 }
