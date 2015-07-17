@@ -30,8 +30,7 @@ namespace RSAEncryptionTester
         private void generateBtn_Click(object sender, EventArgs e)
         {
             var chars = new char[allowedCharsTxt.Text.Length];
-            chars =
-            allowedCharsTxt.Text.ToCharArray();
+            chars = allowedCharsTxt.Text.ToCharArray();
             var data = new byte[1];
             var crypto = new RNGCryptoServiceProvider();
             crypto.GetNonZeroBytes(data);
@@ -42,7 +41,7 @@ namespace RSAEncryptionTester
             {
                 result.Append(chars[b % (chars.Length)]);
             }
-            resultTxt.Text=result.ToString();
+            resultTxt.Text = result.ToString();
         }
 
         private void keepBtn_Click(object sender, EventArgs e)

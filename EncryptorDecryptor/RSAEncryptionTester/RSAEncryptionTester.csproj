@@ -10,13 +10,14 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>RSAEncryptionTester</RootNamespace>
     <AssemblyName>RSAEncryptionTester</AssemblyName>
-    <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <FileUpgradeFlags>
     </FileUpgradeFlags>
     <UpgradeBackupLocation>
     </UpgradeBackupLocation>
     <OldToolsVersion>3.5</OldToolsVersion>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -40,6 +41,8 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Deployment" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.Web" />
+    <Reference Include="System.Web.Extensions" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
   </ItemGroup>
@@ -58,6 +61,12 @@
     <Compile Include="RandomKeyGenerator.Designer.cs">
       <DependentUpon>RandomKeyGenerator.cs</DependentUpon>
     </Compile>
+    <Compile Include="SetPasswordFilePath.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SetPasswordFilePath.Designer.cs">
+      <DependentUpon>SetPasswordFilePath.cs</DependentUpon>
+    </Compile>
     <EmbeddedResource Include="MainForm.resx">
       <DependentUpon>MainForm.cs</DependentUpon>
     </EmbeddedResource>
@@ -74,6 +83,10 @@
     <EmbeddedResource Include="RandomKeyGenerator.resx">
       <DependentUpon>RandomKeyGenerator.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="SetPasswordFilePath.resx">
+      <DependentUpon>SetPasswordFilePath.cs</DependentUpon>
+    </EmbeddedResource>
+    <None Include="app.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>

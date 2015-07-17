@@ -24,10 +24,11 @@ namespace RSAEncryptionTester
         JavaScriptSerializer json_serializer = new JavaScriptSerializer();
         Entry newlyCreatedEntry = new Entry();
         Entry viewedEntry = new Entry();
-        string passwordsFile = "passwords.txt";
+        string passwordsFile = string.Empty;
 
-        public MainForm()
+        public MainForm(string passwordFilePath)
         {
+            passwordsFile = passwordFilePath;
             InitializeComponent();
             pass = new SetRandomPass(SetPass);
             InitializePasswords();
@@ -111,26 +112,20 @@ namespace RSAEncryptionTester
             }
         }
 
-        private void decrypt()
+        private string decrypt(string pass)
         {
-            if (isPrivateKeyLoaded)
+            try
             {
-                try
-                {
-                    byte[] decMessage = Convert.FromBase64String(viewedEntry.EncryptedPassword);
-                    byte[] message = null;
-                    message = myRsa.PrivateDecryption(decMessage);
-                    string sMsg = Encoding.Default.GetString(message);
-                    textBox7.Text = sMsg;
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show("An Error occurred while trying to decrypt the data,\nMessage: " + ex.Message);
-                }
+                byte[] decMessage = Convert.FromBase64String(pass);
+                byte[] message = null;
+                message = myRsa.PrivateDecryption(decMessage);
+                string sMsg = Encoding.Default.GetString(message);
+                return sMsg;
             }
-            else
+            catch (Exception ex)
             {
-                MessageBox.Show("Please load a key");
+                MessageBox.Show("An Error occurred while trying to decrypt the data,\nMessage: " + ex.Message);
+                throw;
             }
         }
 
@@ -145,43 +140,49 @@ namespace RSAEncryptionTester
             txtMessage.Text = pass;
         }
 
+        private string Encrypt(string pass)
+        {
+            try
+            {
+                byte[] message = Encoding.Default.GetBytes(pass);
+                byte[] encMessage = null;
+                encMessage = myRsa.PublicEncryption(message);
+                return Convert.ToBase64String(encMessage);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("An Error occurred while trying to encrypt the data,\nMessage: " + ex.Message);
+                throw;
+            }
+        }
+
         private void saveBtn_Click(object sender, EventArgs e)
         {
             if (isPublicKeyLoaded)
             {
-                try
+                newlyCreatedEntry.EncryptedPassword = Encrypt(txtMessage.Text);
+                newlyCreatedEntry.Name = textBox1.Text;
+                newlyCreatedEntry.Category = textBox2.Text;
+                newlyCreatedEntry.OtherInfo = textBox3.Text;
+                if (!Entries.Contains(newlyCreatedEntry))
                 {
-                    byte[] message = Encoding.Default.GetBytes(txtMessage.Text);
-                    byte[] encMessage = null;
-                    encMessage = myRsa.PublicEncryption(message);
-                    newlyCreatedEntry.EncryptedPassword = Convert.ToBase64String(encMessage);
-                    newlyCreatedEntry.Name = textBox1.Text;
-                    newlyCreatedEntry.Category = textBox2.Text;
-                    newlyCreatedEntry.OtherInfo = textBox3.Text;
-                    if (!Entries.Contains(newlyCreatedEntry))
-                    {
-                        Entries.Add(newlyCreatedEntry);
-                        newlyCreatedEntry = new Entry();
-                    }
-                    txtMessage.Text = string.Empty;
-                    textBox1.Text = string.Empty;
-                    textBox2.Text = string.Empty;
-                    textBox3.Text = string.Empty;
+                    Entries.Add(newlyCreatedEntry);
+                    newlyCreatedEntry = new Entry();
+                }
+                txtMessage.Text = string.Empty;
+                textBox1.Text = string.Empty;
+                textBox2.Text = string.Empty;
+                textBox3.Text = string.Empty;
 
-                    UpdateOrAddEntry();
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show("An Error occurred while trying to encrypt the data,\nMessage: " + ex.Message);
-                }
+                UpdateOrAddEntry();
             }
             else
             {
-                MessageBox.Show("Please load a key");
+                MessageBox.Show("Please load a public key");
             }
         }
 
-        private void UpdateOrAddEntry() 
+        private void UpdateOrAddEntry()
         {
             File.WriteAllText(passwordsFile, String.Empty);
             File.WriteAllText(passwordsFile, json_serializer.Serialize(Entries));
@@ -193,14 +194,20 @@ namespace RSAEncryptionTester
         {
             ComboBox comboBox = (ComboBox)sender;
             var selectedName = (string)comboBox.SelectedItem;
-
-            viewedEntry = Entries.Where(p => p.Name.Equals(selectedName)).SingleOrDefault();
-            textBox5.Text = viewedEntry.Category;
-            textBox6.Text = viewedEntry.Name;
-            textBox4.Text = viewedEntry.OtherInfo;
-            decrypt();
-            NullifyDropDown(comboBox1);
-            comboBox1.Items.AddRange(Entries.Select(a => a.Category).Distinct().ToArray());
+            if (isPrivateKeyLoaded)
+            {
+                viewedEntry = Entries.Where(p => p.Name.Equals(selectedName)).SingleOrDefault();
+                textBox5.Text = viewedEntry.Category;
+                textBox6.Text = viewedEntry.Name;
+                textBox4.Text = viewedEntry.OtherInfo;
+                textBox7.Text = decrypt(viewedEntry.EncryptedPassword);
+                NullifyDropDown(comboBox1);
+                comboBox1.Items.AddRange(Entries.Select(a => a.Category).Distinct().ToArray());
+            }
+            else
+            {
+                MessageBox.Show("Please load a private key");
+            }
         }
 
         private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
@@ -221,10 +228,40 @@ namespace RSAEncryptionTester
         private void updateBtn_Click(object sender, EventArgs e)
         {
             var oldEntryIndex = Entries.IndexOf(viewedEntry);
-            Entries[oldEntryIndex].Name = textBox6.Text;
-            Entries[oldEntryIndex].OtherInfo = textBox4.Text;
-            Entries[oldEntryIndex].Category = textBox5.Text;
-            UpdateOrAddEntry();
+
+            var decryptedPass = decrypt(Entries[oldEntryIndex].EncryptedPassword);
+
+            if (!decryptedPass.Equals(textBox7.Text))
+            {
+                if (isPublicKeyLoaded)
+                {
+                    Entries[oldEntryIndex].Name = textBox6.Text;
+                    Entries[oldEntryIndex].OtherInfo = textBox4.Text;
+                    Entries[oldEntryIndex].Category = textBox5.Text;
+                    Entries[oldEntryIndex].EncryptedPassword = Encrypt(textBox7.Text);
+                    UpdateOrAddEntry();
+                }
+                else
+                {
+                    MessageBox.Show("Please load a public key");
+                }
+            }
+            else
+            {
+                Entries[oldEntryIndex].Name = textBox6.Text;
+                Entries[oldEntryIndex].OtherInfo = textBox4.Text;
+                Entries[oldEntryIndex].Category = textBox5.Text;
+                UpdateOrAddEntry();
+            }
+
+
+        }
+
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            base.OnFormClosing(e);
+            Dispose(true);
+            Application.Exit();
         }
     }
 }

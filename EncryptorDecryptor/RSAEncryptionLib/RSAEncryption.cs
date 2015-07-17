@@ -80,7 +80,7 @@ namespace RSAEncryptionLib
                 Modulus = new BigInteger(rsaParams.Modulus);
                 Exponent = new BigInteger(rsaParams.Exponent);
                 isPublicKeyLoaded = true;
-                isPrivateKeyLoaded = false;
+               // isPrivateKeyLoaded = false;
             }
             // Examle for the proper use of try - catch blocks: Informing the main app where and why the Exception occurred
             catch (XmlSyntaxException ex)  // Not an xml file
@@ -117,7 +117,7 @@ namespace RSAEncryptionLib
                 Exponent = new BigInteger(rsaParams.Exponent);
                 Modulus = new BigInteger(rsaParams.Modulus);
                 isPrivateKeyLoaded = true;
-                isPublicKeyLoaded = true;
+               // isPublicKeyLoaded = true;
             }
             catch (Exception ex)
             {
